@@ -3,6 +3,7 @@ import ApiError from "../utils/ApiError.js";
 import User from "../models/user.models.js";
 import uploadOnCloudinary from "../utils/cloudinary.js";
 import ApiResponse from "../utils/ApiResponse.js";
+import jwt from "jsonwebtoken"
 
 const generateAccessAndRefreshToken = async (userId) => {
   try {
@@ -100,7 +101,7 @@ const loginUser = asyncHandler(async (req, res) => {
 
   const { email, username, password } = req.body;
 
-  if (!username || !email) {
+  if (!(username || email)) {
     throw new ApiError(400, "username or password is required");
   }
 
@@ -163,4 +164,50 @@ const logoutUser = asyncHandler(async (req, res) => {
   };
   return res.status(200).clearcookie("accessToken", options).clearcookie("refreshToken", options).json(new ApiResponse(200,{},"user logged out"))
 });
-export default { registerUser, loginUser , logoutUser };
+
+const refreshAccessToken=asyncHandler(async(req,res)=>{
+    const incomingRefreshToken=req.cookies.refreshToken || req.body.refreshToken
+
+    if(incomingRefreshToken){
+        throw new ApiError(402,"unauthorized request")
+    }
+
+   try{
+    const decodedToken=jwt.verify(
+        incomingRefreshToken,process.env.REFRESH_TOKEN_SECRETE
+    )
+
+    const user=await User.findById(decodedToken?._id)
+    if(!user){
+        throw new ApiError(401,"invaid request token")
+    }
+
+    if(incomingRefreshToken!== user?.refreshToken){
+        throw new ApiError(401,"REFRESH TOKEN IS EXPIRED OR USED")
+    }
+
+    const options={
+        httpOnly:true,
+        secure:true
+    }
+
+   const {accessToken,newrefreshToken}=await generateAccessAndRefreshToken(user._id)
+
+   return res
+   .status(200)
+   .cookie("accessToken",accessToken,options)
+   .cookie("refreshToken",newrefreshToken,options)
+    .json(
+        new ApiResponse(
+            200,
+            {accessToken,refreshToken:newrefreshToken},
+            "Acess token refreshed"
+        )
+    )
+   }catch(error){
+    throw new ApiError(401,"invalid refresh token")
+   }
+})
+
+
+export default { registerUser, loginUser , logoutUser ,refreshAccessToken};
