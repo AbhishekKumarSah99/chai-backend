@@ -6,7 +6,7 @@ import UserController from "../controllers/user.controller.js"; // Import the ob
 import upload from "../middlewares/multer.middleware.js";
 import  verifyJWT  from "../middlewares/auth.middleware.js";
 
-const { registerUser, loginUser, logoutUser,refreshAccessToken } = UserController;
+const { registerUser, loginUser, logoutUser,refreshAccessToken,changeCurrentPassword,getCurrentUser ,updateAccountDetail,updateUserAvatar,updateUserCoverImage} = UserController;
 const router=Router()
 
 router.route("/register").post(
